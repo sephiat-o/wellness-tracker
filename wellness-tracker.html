@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Your Wellness Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5C7A5C">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wellness">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root {
@@ -372,7 +378,7 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
     <div class="inner-tab active" onclick="switchRecipeTab('suggest',this)">🍽 Today's Meals</div>
     <div class="inner-tab" onclick="switchRecipeTab('groceries',this)">🛒 Groceries</div>
     <div class="inner-tab" onclick="switchRecipeTab('library',this)">📚 My Recipes</div>
-    <div class="inner-tab" onclick="switchRecipeTab('ai',this)">✨ AI Generator</div>
+    <div class="inner-tab" onclick="switchRecipeTab('ai',this)">🔍 Find a Recipe</div>
   </div>
 
   <div id="recipe-suggest-pane">
@@ -433,12 +439,40 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
       </div>
       <input class="inp" id="grocery-search" placeholder="🔍 Search your groceries..." style="margin-bottom:12px;" oninput="searchGroceries(this.value)">
       <div class="grocery-list" id="grocery-list"></div>
-      <div style="font-size:11px;color:var(--mid);margin-top:8px;">Uncheck anything you've run out of — it feeds straight into "What You Could Eat Today" and the AI Generator. Tip: tap "Uncheck All" before uploading a fresh receipt so only what's actually on it gets checked back on.</div>
+      <div style="font-size:11px;color:var(--mid);margin-top:8px;">Uncheck anything you've run out of — it feeds straight into "What You Could Eat Today" and "Find a Recipe." Tip: tap "Uncheck All" before uploading a fresh receipt so only what's actually on it gets checked back on.</div>
     </div>
   </div>
 
   <div id="recipe-library-pane" style="display:none">
     <input class="inp" id="recipe-search" placeholder="🔍 Search your recipes..." style="margin-bottom:12px;" oninput="searchRecipes(this.value)">
+    <button class="btn-outline btn" style="width:100%;margin-bottom:12px;" onclick="toggleAddRecipeForm()">➕ Add a Recipe</button>
+    <div class="card" id="add-recipe-card" style="display:none;margin-bottom:16px;">
+      <div class="card-title">New Recipe</div>
+      <input class="inp" id="new-recipe-name" placeholder="Recipe name" style="margin-bottom:8px;">
+      <input class="inp" id="new-recipe-emoji" placeholder="Emoji (optional, e.g. 🍝)" maxlength="4" style="margin-bottom:8px;">
+      <div style="font-size:11px;color:var(--mid);margin-bottom:4px;font-weight:600;">Ingredients (one per line)</div>
+      <textarea class="inp" id="new-recipe-ingredients" rows="4" placeholder="1 basa fillet&#10;⅓ cup rice&#10;Zucchini" style="margin-bottom:8px;"></textarea>
+      <div style="font-size:11px;color:var(--mid);margin-bottom:4px;font-weight:600;">Steps (one per line)</div>
+      <textarea class="inp" id="new-recipe-steps" rows="4" placeholder="Cook rice.&#10;Pan-fry basa 3 min each side.&#10;Plate together." style="margin-bottom:8px;"></textarea>
+      <div class="custom-meal-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+        <input class="inp" id="new-recipe-kcal" type="number" placeholder="kcal">
+        <input class="inp" id="new-recipe-protein" type="number" placeholder="protein g">
+        <input class="inp" id="new-recipe-carbs" type="number" placeholder="carbs g">
+        <input class="inp" id="new-recipe-fiber" type="number" placeholder="fiber g">
+      </div>
+      <input class="inp" id="new-recipe-note" placeholder="Note or tip (optional)" style="margin:8px 0;">
+      <div style="font-size:11px;color:var(--mid);margin-bottom:6px;font-weight:600;">Meal Type</div>
+      <div class="mealtype-chips" id="new-recipe-mealtypes" style="margin-bottom:12px;">
+        <button type="button" class="mealtype-chip" data-mt="breakfast" onclick="this.classList.toggle('active')">🌅 Breakfast</button>
+        <button type="button" class="mealtype-chip" data-mt="lunch" onclick="this.classList.toggle('active')">🌞 Lunch</button>
+        <button type="button" class="mealtype-chip" data-mt="dinner" onclick="this.classList.toggle('active')">🌙 Dinner</button>
+        <button type="button" class="mealtype-chip" data-mt="snack" onclick="this.classList.toggle('active')">🍎 Snack</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" style="flex:1;" onclick="saveNewRecipe()">Save Recipe</button>
+        <button class="btn-outline btn" style="flex:1;" onclick="toggleAddRecipeForm()">Cancel</button>
+      </div>
+    </div>
     <div class="filter-bar">
       <button class="filter-btn active" onclick="filterRecipes('all',this)">All</button>
       <button class="filter-btn" onclick="filterRecipes('high-fiber',this)">🌱 Fiber</button>
@@ -451,14 +485,13 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
   </div>
   <div id="recipe-ai-pane" style="display:none">
     <div class="ai-box">
-      <h3>✨ AI Recipe Generator</h3>
-      <p>Enter any ingredients you have. Pantry staples like salt, pepper, oil, and garlic powder are automatically assumed — just list what's fresh or specific. Claude generates weight-loss friendly recipes — save the ones you like directly to your recipe bank.</p>
+      <h3>🔍 Find a Recipe</h3>
+      <p>Enter ingredients you have and this opens a Google search for real recipes matching them — no cost, no setup. Pantry staples like salt, pepper, oil, and garlic powder are automatically included, so just list what's fresh or specific.</p>
       <p style="margin-top:-6px;">🧂 Always assumed: <span style="opacity:.7">Salt, black pepper, olive oil, garlic powder, onion powder, paprika, chili flakes, cinnamon, soy sauce, vinegar, lime/lemon</span></p>
       <textarea class="inp" id="ai-ingredients" placeholder="e.g. chicken breast, zucchini, eggs, avocado, pasta, tinned tomatoes..." rows="3" style="margin-bottom:10px;"></textarea>
       <button class="btn-outline btn" style="margin-bottom:10px;width:100%" onclick="useGroceriesForAI()">🛒 Use my checked groceries</button>
       <div class="row" style="margin-bottom:10px;">
         <select class="inp" id="ai-meal-type">
-
           <option value="any meal">Any meal</option>
           <option value="breakfast">Breakfast</option>
           <option value="lunch">Lunch</option>
@@ -466,9 +499,9 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
           <option value="snack">Snack</option>
           <option value="meal prep batch">Meal Prep Batch</option>
         </select>
-        <button class="btn btn-purple" id="ai-btn" onclick="generateRecipes()" style="white-space:nowrap">Generate</button>
+        <button class="btn btn-purple" id="ai-btn" onclick="searchGoogleForRecipe()" style="white-space:nowrap">🔍 Search</button>
       </div>
-      <div id="ai-output"></div>
+      <div style="font-size:11px;color:var(--mid);margin-top:4px;">Opens Google in a new tab with a weight-loss-friendly recipe search — browse, pick one you like, and add it to your recipe bank manually from "My Recipes."</div>
     </div>
   </div>
 </div>
@@ -1507,6 +1540,44 @@ function searchRecipes(term) {
   recipeSearchTerm=(term||'').trim();
   renderRecipes();
 }
+function toggleAddRecipeForm() {
+  const card=document.getElementById('add-recipe-card');
+  const opening=card.style.display==='none';
+  card.style.display=opening?'block':'none';
+  if(!opening) {
+    // clear the form on close/cancel
+    ['new-recipe-name','new-recipe-emoji','new-recipe-ingredients','new-recipe-steps','new-recipe-kcal','new-recipe-protein','new-recipe-carbs','new-recipe-fiber','new-recipe-note'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    document.querySelectorAll('#new-recipe-mealtypes .mealtype-chip').forEach(b=>b.classList.remove('active'));
+  }
+}
+function saveNewRecipe() {
+  const name=document.getElementById('new-recipe-name').value.trim();
+  const ingredients=document.getElementById('new-recipe-ingredients').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const steps=document.getElementById('new-recipe-steps').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!name){ alert('Give the recipe a name.'); return; }
+  if(!ingredients.length){ alert('Add at least one ingredient.'); return; }
+  if(!steps.length){ alert('Add at least one step.'); return; }
+  const emoji=document.getElementById('new-recipe-emoji').value.trim()||'🍽';
+  const kcal=parseInt(document.getElementById('new-recipe-kcal').value)||0;
+  const protein=parseInt(document.getElementById('new-recipe-protein').value)||0;
+  const carbs=parseInt(document.getElementById('new-recipe-carbs').value)||0;
+  const fiber=parseInt(document.getElementById('new-recipe-fiber').value)||0;
+  const note=document.getElementById('new-recipe-note').value.trim();
+  const mealTypes=[...document.querySelectorAll('#new-recipe-mealtypes .mealtype-chip.active')].map(b=>b.dataset.mt);
+  const s=getState();
+  if(!s.savedRecipes) s.savedRecipes=[];
+  s.savedRecipes.push({
+    id:'saved-'+Date.now(), name, emoji, tags:[],
+    mealTypes: mealTypes.length?mealTypes:['breakfast','lunch','dinner'],
+    kcal, protein, carbs, fiber, ingredients, steps, note
+  });
+  saveState(s);
+  toggleAddRecipeForm();
+  renderRecipes();
+  renderSuggestions();
+}
 function renderRecipes() {
   const all=getAllRecipes();
   let filtered=activeFilter==='all'?all:activeFilter==='saved'?all.filter(r=>r.tags.includes('saved')):all.filter(r=>r.tags.includes(activeFilter));
@@ -1555,98 +1626,17 @@ function deleteRecipe(id) {
   });
 }
 
-// ═══ AI GENERATOR ═══
-async function generateRecipes() {
+// ═══ FIND A RECIPE (Google Search) ═══
+// This used to call Claude's API directly, which only worked while previewed inside Claude's
+// own environment. Now that this runs as a standalone site, there's no safe way to hold an API
+// key in public, client-side code — so this opens a Google search instead. No key, no cost.
+function searchGoogleForRecipe() {
   const ingredients=document.getElementById('ai-ingredients').value.trim();
   const mealType=document.getElementById('ai-meal-type').value;
-  if(!ingredients){alert('Enter some ingredients first.');return;}
-  const btn=document.getElementById('ai-btn');
-  btn.disabled=true; btn.textContent='Generating...';
-  document.getElementById('ai-output').innerHTML=`<div class="ai-loading"><div class="spinner"></div><br>Claude is creating recipes for you...</div>`;
-
-  const prompt=`You are a weight-loss nutritionist. The user wants to lose weight (target 1,250–1,350 kcal/day), increase fiber to 30g/day, and eat more protein (especially chicken). They enjoy both Nigerian-inspired and international food, prefer hot food, and like pasta, eggs, and rice.
-
-Ingredients on hand: ${ingredients}
-Pantry staples always available — use freely, no need to call these out as limiting: ${PANTRY_STAPLES.join(', ')}
-Meal type: ${mealType}
-
-Generate exactly 2 weight-loss friendly recipes that make good use of the ingredients on hand, seasoned using the pantry staples as needed. Respond ONLY with a valid JSON array, no markdown, no explanation, no backticks. Use this exact structure:
-[
-  {
-    "name": "Recipe Name",
-    "emoji": "🍳",
-    "description": "One sentence description",
-    "ingredients": ["item 1", "item 2"],
-    "steps": ["Step 1", "Step 2"],
-    "kcal": 350,
-    "protein": 28,
-    "carbs": 30,
-    "fiber": 8,
-    "note": "Optional fiber or prep tip"
-  }
-]`;
-
-  try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
-    });
-    const data=await res.json();
-    const raw=data.content?.find(b=>b.type==='text')?.text||'[]';
-    let recipes;
-    try {
-      const cleaned=raw.replace(/```json|```/g,'').trim();
-      recipes=JSON.parse(cleaned);
-    } catch(e) {
-      document.getElementById('ai-output').innerHTML='<div style="padding:12px;color:var(--peach);font-size:13px;">⚠️ Couldn\'t parse the response. Try generating again.</div>';
-      btn.disabled=false; btn.textContent='Generate'; return;
-    }
-    const s=getState();
-    const savedIds=(s.savedRecipes||[]).map(r=>r.id);
-    document.getElementById('ai-output').innerHTML=recipes.map((r,i)=>{
-      const tempId='ai-'+Date.now()+'-'+i;
-      r._tempId=tempId;
-      r._mealType=mealType;
-      return `<div class="ai-recipe-card" id="aicard-${tempId}">
-        <h4>${r.emoji||'🍽'} ${r.name}</h4>
-        <div class="desc">${r.description||''}</div>
-        <div class="macros">
-          <div class="macro-chip">${r.kcal} kcal</div>
-          <div class="macro-chip">${r.protein}g protein</div>
-          <div class="macro-chip fc">🌱 ${r.fiber}g fiber</div>
-        </div>
-        <div class="section-lbl">Ingredients</div>
-        <ul>${(r.ingredients||[]).map(i=>`<li>${i}</li>`).join('')}</ul>
-        <div class="section-lbl">Steps</div>
-        <ol>${(r.steps||[]).map(s=>`<li>${s}</li>`).join('')}</ol>
-        ${r.note?`<div class="fiber-tip" style="margin-top:10px">💡 ${r.note}</div>`:''}
-        <button class="save-recipe-btn" id="savebtn-${tempId}" onclick='saveAIRecipe(${JSON.stringify(r).replace(/'/g,"&#39;")}, "${tempId}")'>⭐ Save to My Recipes</button>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    document.getElementById('ai-output').innerHTML=`<div style="padding:12px;color:var(--peach);font-size:13px;">⚠️ Connection error: ${e.message}</div>`;
-  }
-  btn.disabled=false; btn.textContent='Generate';
-}
-
-function saveAIRecipe(recipe, tempId) {
-  const s=getState();
-  if(!s.savedRecipes) s.savedRecipes=[];
-  const id='saved-'+Date.now();
-  const mt=recipe._mealType;
-  const mealTypes=(!mt||mt==='any meal'||mt==='meal prep batch')?['breakfast','lunch','dinner']:[mt];
-  s.savedRecipes.push({
-    id, name:recipe.name, emoji:recipe.emoji||'🍽',
-    tags:[], mealTypes, kcal:recipe.kcal||0, protein:recipe.protein||0,
-    carbs:recipe.carbs||0, fiber:recipe.fiber||0,
-    ingredients:recipe.ingredients||[], steps:recipe.steps||[],
-    note:recipe.note||''
-  });
-  saveState(s);
-  const btn=document.getElementById('savebtn-'+tempId);
-  if(btn){btn.textContent='✅ Saved to My Recipes!';btn.className='save-recipe-btn saved-btn';btn.disabled=true;}
-  renderSuggestions();
+  if(!ingredients){ alert('Enter some ingredients first.'); return; }
+  const mealPart=(mealType && mealType!=='any meal') ? mealType+' ' : '';
+  const query=`${mealPart}recipe with ${ingredients} high protein high fiber weight loss`;
+  window.open('https://www.google.com/search?q='+encodeURIComponent(query), '_blank');
 }
 
 // ═══ 30-DAY CHALLENGE CALENDAR ═══
@@ -1855,6 +1845,14 @@ renderToday();
 renderRecipes();
 renderGroceries();
 renderSuggestions();
+
+// Register service worker so the app can be "installed" and used offline.
+// Silently no-ops if served from file:// or somewhere that doesn't support it.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
